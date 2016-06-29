@@ -142,7 +142,7 @@ def resizeBox(long_offset, long, lat):
     distance = great_circle_distance_miles(point1, point2)
     print 'distance = ' + str(distance) + ' with Lat = ' + str(lat)
 
-    if distance > 24.8 and distance <=24.9:
+    if distance > 20 and distance <=24.9:
         #print 'Bingo with long_offset=' + str(long_offset)
         return long_offset
     else:
@@ -194,9 +194,9 @@ if __name__ == "__main__":
     parser.add_argument('-n', '--north', type=float, help='North latitude in decimal degrees. ')
     parser.add_argument('-s', '--south', type=float, help='South latitude in decimal degrees. ')
     #These are optional.
-    parser.add_argument('-la', '--limit_lat', help='Maximum bounding box decimal degree latitude size, must be <= 25 miles.  '
+    parser.add_argument('-la', '--limit_lat', type=float, help='Maximum bounding box decimal degree latitude size, must be <= 25 miles.  '
                                                    'Defaults to ' + str(lat_offset_default) + ' degrees latitude.')
-    parser.add_argument('-lo', '--limit_long', help='Maximum bounding box decimal degree longitude size, must be <= 25 miles. '
+    parser.add_argument('-lo', '--limit_long', type=float, help='Maximum bounding box decimal degree longitude size, must be <= 25 miles. '
                                                     'Defaults to ' + str(long_offset_default) + ' degrees longitude.')
 
     parser.add_argument('-t', '--tag', help='The rule tag to apply to the generated bounding box rules. ')
@@ -280,6 +280,7 @@ if __name__ == "__main__":
 
     #Confirm default longitude offset
     long_offset = resizeBox(long_offset, long_west, lat_south)
+    print "Longitude Offset:", long_offset
 
     #Initialize Origin bounding box
     cur_west = long_west
@@ -335,8 +336,23 @@ if __name__ == "__main__":
             else: rule = {"value":rule_syntax, "tag":tag}
             rules.append(rule)
 
+        maxRuleCount = 15
+
+        mergedRules = []
+        mergedRuleCount = (len(rules) / maxRuleCount) + 1
+        for i in xrange(0, maxRuleCount*mergedRuleCount, maxRuleCount):
+            sliced = rules[i:i+maxRuleCount]
+
+            if ( len(sliced) > 0 ):
+                mergedRules.append(' OR '.join(map(lambda x: x['value'], sliced)))
+
         boxesDict = {}
-        boxesDict['rules'] = rules
+        if ( tag == None ):
+            boxesDict['rules'] = [{'value':x} for x in mergedRules]
+        else:
+            boxesDict['rules'] = [{'tag': tag, 'value':x} for x in mergedRules]
+
+        print "Have %d rules." % len(mergedRules)
 
         #Write rules to file.
         with open(filepath,'w+') as outfile:
